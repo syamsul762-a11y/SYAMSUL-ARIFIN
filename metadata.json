@@ -1,0 +1,6 @@
+{
+  "name": "SoalGen AI - Generator Soal Pintar",
+  "description": "Aplikasi bertenaga AI untuk membuat soal latihan, ujian, dan kuis secara otomatis berdasarkan topik dan jenjang pendidikan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
