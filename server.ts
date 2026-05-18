@@ -24,16 +24,32 @@ const ai = new GoogleGenAI({
 app.post("/api/generate-questions", async (req, res) => {
   try {
     const { topic, subject, grade, difficulty, count, type } = req.body;
+    const userApiKey = req.headers['x-gemini-api-key'] as string;
+    
+    const apiKey = userApiKey || process.env.GEMINI_API_KEY;
 
-    const prompt = `Buatkan ${count} soal ${type === 'multiple_choice' ? 'pilihan ganda' : 'essay'} tentang topik "${topic}" untuk mata pelajaran "${subject}" jenjang "${grade}" dengan tingkat kesulitan "${difficulty}".
-    Pastikan soal berkualitas tinggi, akurat, dan sesuai kurikulum.
-    Jika pilihan ganda, berikan 4 opsi (A, B, C, D) dan kunci jawaban.
-    Jika essay, berikan soal dan contoh jawaban yang benar.
-    Gunakan Bahasa Indonesia yang baik dan benar.`;
+    if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
+      return res.status(401).json({ 
+        error: "API Key tidak valid atau belum diatur. Silakan masukkan API Key di menu Pengaturan." 
+      });
+    }
 
-    const response = await ai.models.generateContent({
+    const aiInstance = new GoogleGenAI({
+      apiKey: apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
+
+    const response = await aiInstance.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: prompt,
+      contents: `Buatkan ${count} soal ${type === 'multiple_choice' ? 'pilihan ganda' : 'essay'} tentang topik "${topic}" untuk mata pelajaran "${subject}" jenjang "${grade}" dengan tingkat kesulitan "${difficulty}".
+      Pastikan soal berkualitas tinggi, akurat, dan sesuai kurikulum.
+      Jika pilihan ganda, berikan 4 opsi (A, B, C, D) dan kunci jawaban.
+      Jika essay, berikan soal dan contoh jawaban yang benar.
+      Gunakan Bahasa Indonesia yang baik dan benar.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -67,7 +83,11 @@ app.post("/api/generate-questions", async (req, res) => {
     res.json(result);
   } catch (error: any) {
     console.error("AI Error:", error);
-    res.status(500).json({ error: "Gagal membuat soal. Silakan coba lagi." });
+    let errorMessage = "Gagal membuat soal. Silakan coba lagi.";
+    if (error.message?.includes("API_KEY_INVALID")) {
+      errorMessage = "API Key yang Anda masukkan tidak valid.";
+    }
+    res.status(500).json({ error: errorMessage });
   }
 });
 

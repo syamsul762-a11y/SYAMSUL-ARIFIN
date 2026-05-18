@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BookOpen, 
@@ -12,7 +12,10 @@ import {
   AlertCircle,
   Hash,
   Layers,
-  GraduationCap
+  GraduationCap,
+  Key,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface Question {
@@ -33,6 +36,22 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [error, setError] = useState('');
+  
+  // API Key States
+  const [apiKey, setApiKey] = useState('');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [isKeyVisible, setIsKeyVisible] = useState(false);
+
+  useEffect(() => {
+    const savedKey = localStorage.getItem('gemini_api_key');
+    if (savedKey) setApiKey(savedKey);
+  }, []);
+
+  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newKey = e.target.value;
+    setApiKey(newKey);
+    localStorage.setItem('gemini_api_key', newKey);
+  };
 
   const generateQuestions = async () => {
     if (!topic) {
@@ -44,7 +63,10 @@ export default function App() {
     try {
       const response = await fetch('/api/generate-questions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-gemini-api-key': apiKey
+        },
         body: JSON.stringify({ topic, subject, grade, difficulty, count, type }),
       });
       const data = await response.json();
@@ -52,6 +74,9 @@ export default function App() {
       setQuestions(data.questions);
     } catch (err: any) {
       setError(err.message || 'Gagal membuat soal. Periksa koneksi backend.');
+      if (err.message?.includes('API Key')) {
+        setShowApiKeyInput(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -100,10 +125,55 @@ export default function App() {
           {/* Settings Panel */}
           <section className="lg:col-span-4 space-y-6">
             <div className="bg-white rounded-3xl p-6 border border-[#1A1A1A]/5 shadow-sm">
-              <div className="flex items-center gap-2 mb-6">
-                <Settings size={18} className="text-[#5A5A40]" />
-                <h2 className="font-semibold">Pengaturan Soal</h2>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <Settings size={18} className="text-[#5A5A40]" />
+                  <h2 className="font-semibold">Pengaturan Soal</h2>
+                </div>
+                <button 
+                  onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+                  className={`p-2 rounded-lg transition-colors ${showApiKeyInput ? 'bg-[#5A5A40] text-white' : 'hover:bg-[#F5F5F0] text-[#1A1A1A]/40'}`}
+                  title="Pengaturan API Key"
+                >
+                  <Key size={16} />
+                </button>
               </div>
+
+              <AnimatePresence>
+                {showApiKeyInput && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0, marginBottom: 0 }}
+                    animate={{ height: 'auto', opacity: 1, marginBottom: 24 }}
+                    exit={{ height: 0, opacity: 0, marginBottom: 0 }}
+                    className="overflow-hidden space-y-3"
+                  >
+                    <div className="p-4 bg-[#F5F5F0] rounded-2xl border border-[#5A5A40]/10">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-[#1A1A1A]/40 mb-2 block flex items-center justify-between">
+                        Gemini API Key
+                        <span className="text-[#5A5A40] lowercase font-normal italic">Simpan otomatis</span>
+                      </label>
+                      <div className="relative">
+                        <input 
+                          type={isKeyVisible ? "text" : "password"} 
+                          placeholder="Masukkan AI Studio API Key..." 
+                          value={apiKey}
+                          onChange={handleApiKeyChange}
+                          className="w-full bg-white border-none rounded-xl pl-4 pr-10 py-2 text-xs focus:ring-1 focus:ring-[#5A5A40] outline-none"
+                        />
+                        <button 
+                          onClick={() => setIsKeyVisible(!isKeyVisible)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1A1A1A]/20 hover:text-[#5A5A40]"
+                        >
+                          {isKeyVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </div>
+                      <p className="text-[9px] text-[#1A1A1A]/40 mt-2 leading-relaxed">
+                        Kunci ini disimpan hanya di browser Anda dan digunakan untuk mengakses model AI.
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <div className="space-y-4">
                 <div>
